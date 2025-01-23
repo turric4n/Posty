@@ -18,7 +18,7 @@ public class Program
                 using var client = new HttpClient();
 
                 var method = arguments.Method.ParseHttpMethods();
-                var request = CreateHttpRequestMessage(method, arguments.Location, arguments.Header, arguments.Data);
+                var request = HttpRequestHelper.CreateHttpRequestMessage(method, arguments.Location, arguments.Header, arguments.Data);
 
                 var response = await client.SendAsync(request);
                 var responseContent = await response.Content.ReadAsStringAsync();
@@ -30,42 +30,45 @@ public class Program
             });
     }
 
-    private static HttpRequestMessage CreateHttpRequestMessage(HttpMethodType method, string location, IEnumerable<string> headers, string data)
+    public static class HttpRequestHelper
     {
-        var request = new HttpRequestMessage(new HttpMethod(method.ToString()), location);
-        var contentType = ExtractHeaders(request, headers);
-
-        if (!string.IsNullOrEmpty(data))
+        public static HttpRequestMessage CreateHttpRequestMessage(HttpMethodType method, string location, IEnumerable<string> headers, string data)
         {
-            var content = string.IsNullOrEmpty(contentType) ? 
-                new StringContent(data, Encoding.UTF8) 
-                : new StringContent(data, Encoding.UTF8, contentType);
+            var request = new HttpRequestMessage(new HttpMethod(method.ToString()), location);
+            var contentType = ExtractHeaders(request, headers);
+
+            if (!string.IsNullOrEmpty(data))
+            {
+                var content = string.IsNullOrEmpty(contentType) ? 
+                    new StringContent(data, Encoding.UTF8) 
+                    : new StringContent(data, Encoding.UTF8, contentType);
             
-            request.Content = content;
+                request.Content = content;
+            }
+
+            return request;
         }
 
-        return request;
-    }
-
-    private static string ExtractHeaders(HttpRequestMessage request, IEnumerable<string> headers)
-    {
-        var contentType = string.Empty;
-
-        foreach (var header in headers)
+        public static string ExtractHeaders(HttpRequestMessage request, IEnumerable<string> headers)
         {
-            var key = header.Split(":")[0].Trim();
-            var value = header.Split(":")[1].Trim();
+            var contentType = string.Empty;
 
-            if (key.Equals("content-type", StringComparison.OrdinalIgnoreCase))
+            foreach (var header in headers)
             {
-                contentType = value;
+                var key = header.Split(":")[0].Trim();
+                var value = header.Split(":")[1].Trim();
+
+                if (key.Equals("content-type", StringComparison.OrdinalIgnoreCase))
+                {
+                    contentType = value;
+                }
+                else
+                {
+                    request.Headers.Add(key, value);
+                }
             }
-            else
-            {
-                request.Headers.Add(key, value);
-            }
+
+            return contentType;
         }
-
-        return contentType;
     }
 }
